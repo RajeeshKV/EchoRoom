@@ -2,6 +2,7 @@ using Chat.Api.Data;
 using Chat.Api.Hubs;
 using Chat.Api.Middleware;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Chat.Api.Extensions;
 
@@ -20,6 +21,10 @@ public static class WebApplicationExtensions
         app.UseMiddleware<BlockedIpMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.MapGet("/", () => TypedResults.Ok(CreateHealthResponse()));
+        app.MapMethods("/", ["HEAD"], () => Results.Ok());
+        app.MapGet("/health", () => TypedResults.Ok(CreateHealthResponse()));
+        app.MapMethods("/health", ["HEAD"], () => Results.Ok());
         app.MapControllers();
         app.MapHub<ChatHub>("/hubs/chat");
 
@@ -31,5 +36,15 @@ public static class WebApplicationExtensions
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await dbContext.Database.MigrateAsync();
+    }
+
+    private static object CreateHealthResponse()
+    {
+        return new
+        {
+            status = "ok",
+            service = "Chat.Api",
+            utcTime = DateTime.UtcNow
+        };
     }
 }
