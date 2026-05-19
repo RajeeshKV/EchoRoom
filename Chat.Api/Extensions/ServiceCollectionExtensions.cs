@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUserConnectionService, UserConnectionService>();
         services.AddSingleton<IRateLimitService, RateLimitService>();
         services.AddHostedService<MessageCleanupService>();
+        services.AddHostedService<PresenceCleanupService>();
 
         services.AddScoped<IRequestDispatcher, RequestDispatcher>();
         services.AddScoped<ICommandHandler<Features.Auth.Login.LoginCommand, DTOs.LoginResponse>, Features.Auth.Login.LoginCommandHandler>();

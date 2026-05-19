@@ -86,6 +86,7 @@ public class ChatHub(
             throw new HubException("A username is required.");
         }
 
+        await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
         var roomKey = userConnectionService.GetPrivateRoomKey(username, otherUsername);
         await Groups.AddToGroupAsync(Context.ConnectionId, roomKey, Context.ConnectionAborted);
 
@@ -139,6 +140,8 @@ public class ChatHub(
             return;
         }
 
+        await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
+
         if (string.IsNullOrWhiteSpace(targetUsername))
         {
             await Clients.OthersInGroup(userConnectionService.GlobalRoomName).SendAsync("UserTyping", username, Context.ConnectionAborted);
@@ -147,6 +150,17 @@ public class ChatHub(
 
         var roomKey = userConnectionService.GetPrivateRoomKey(username, targetUsername);
         await Clients.OthersInGroup(roomKey).SendAsync("UserTypingPrivate", username, targetUsername, Context.ConnectionAborted);
+    }
+
+    public async Task Heartbeat()
+    {
+        var username = GetUsername();
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return;
+        }
+
+        await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
     }
 
     private async Task<RateLimitDecision> EvaluateRateLimitAsync(string username)

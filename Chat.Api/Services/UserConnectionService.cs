@@ -115,6 +115,49 @@ public class UserConnectionService(IServiceScopeFactory scopeFactory) : IUserCon
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<string>> MarkStaleUsersOfflineAsync(TimeSpan staleAfter, CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cutoff = DateTime.UtcNow.Subtract(staleAfter);
+
+        var staleUsers = await dbContext.Users
+            .Where(x => x.IsOnline && x.LastSeenAt < cutoff)
+            .ToListAsync(cancellationToken);
+
+        if (staleUsers.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var staleUsernames = staleUsers
+            .Select(x => x.Username)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        foreach (var user in staleUsers)
+        {
+            user.IsOnline = false;
+        }
+
+        var staleConnections = await dbContext.UserConnections
+            .Where(x => staleUsernames.Contains(x.Username))
+            .ToListAsync(cancellationToken);
+
+        if (staleConnections.Count > 0)
+        {
+            dbContext.UserConnections.RemoveRange(staleConnections);
+        }
+
+        foreach (var username in staleUsernames)
+        {
+            _activeConnections.TryRemove(username, out _);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return staleUsernames;
+    }
+
     public async Task<IReadOnlyCollection<ActiveUserDto>> GetActiveUsersAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();

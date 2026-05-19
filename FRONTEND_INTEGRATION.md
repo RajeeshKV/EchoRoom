@@ -112,6 +112,17 @@ connection.on("SessionReplaced", (message) => {
 });
 
 await connection.start();
+
+const heartbeatId = window.setInterval(() => {
+  if (connection.state === signalR.HubConnectionState.Connected) {
+    connection.invoke("Heartbeat").catch(console.error);
+  }
+}, 25000);
+
+window.addEventListener("beforeunload", () => {
+  window.clearInterval(heartbeatId);
+  connection.stop();
+});
 ```
 
 ## Client To Server Hub Methods
@@ -139,6 +150,12 @@ await connection.invoke("SendPrivateMessage", "Bob123", "Hey Bob");
 ```ts
 await connection.invoke("Typing");
 await connection.invoke("Typing", "Bob123");
+```
+
+### Presence heartbeat
+
+```ts
+await connection.invoke("Heartbeat");
 ```
 
 ## Server Events
@@ -194,3 +211,5 @@ await connection.invoke("Typing", "Bob123");
 - Public messages and private messages are sanitized and capped at `500` characters.
 - The backend sends the latest public history on hub connect, and private history when the client joins a private room.
 - Use automatic reconnect on the SignalR client because cold starts on Render can delay websocket availability.
+- Send `Heartbeat` every `25` seconds while connected so inactive users are cleared correctly.
+- The backend marks users offline when no heartbeat or other activity is seen for about `60` seconds.
