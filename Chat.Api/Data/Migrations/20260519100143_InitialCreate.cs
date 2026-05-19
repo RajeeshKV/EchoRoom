@@ -1,12 +1,14 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Chat.Api.Data.Migrations
 {
+    /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -98,12 +100,20 @@ namespace Chat.Api.Data.Migrations
                 unique: true);
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "BlockedIps");
-            migrationBuilder.DropTable(name: "Messages");
-            migrationBuilder.DropTable(name: "UserConnections");
-            migrationBuilder.DropTable(name: "Users");
+            migrationBuilder.DropTable(
+                name: "BlockedIps");
+
+            migrationBuilder.DropTable(
+                name: "Messages");
+
+            migrationBuilder.DropTable(
+                name: "UserConnections");
+
+            migrationBuilder.DropTable(
+                name: "Users");
         }
     }
 }
