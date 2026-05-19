@@ -1,7 +1,5 @@
-using Chat.Api.Data;
 using Chat.Api.Hubs;
 using Chat.Api.Middleware;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Chat.Api.Extensions;
@@ -30,14 +28,6 @@ public static class WebApplicationExtensions
 
         return app;
     }
-
-    public static async Task ApplyDatabaseMigrationsAsync(this WebApplication app)
-    {
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await dbContext.Database.MigrateAsync();
-    }
-
     private static object CreateHealthResponse()
     {
         return new

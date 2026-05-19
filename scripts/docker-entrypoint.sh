@@ -1,14 +1,16 @@
 #!/usr/bin/env sh
 set -eu
 
+cd /src
+
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
-  echo "Restoring project for EF tools..."
-  dotnet restore /src/Chat.Api/Chat.Api.csproj
+  echo "Restoring solution for EF Core tools..."
+  dotnet restore Chatroom.sln
 
   echo "Applying EF Core migrations..."
   dotnet ef database update \
-    --project /src/Chat.Api/Chat.Api.csproj \
-    --startup-project /src/Chat.Api/Chat.Api.csproj
+    --project Chat.Api/Chat.Api.csproj \
+    --startup-project Chat.Api/Chat.Api.csproj
 fi
 
 echo "Starting Chat.Api..."
