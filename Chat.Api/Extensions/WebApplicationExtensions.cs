@@ -8,11 +8,8 @@ public static class WebApplicationExtensions
 {
     public static WebApplication UseChatApplication(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+        app.UseSwagger();
+        app.UseSwaggerUI();
 
         app.UseHttpsRedirection();
         app.UseCors("ChatClient");
