@@ -26,7 +26,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBlockedIpService, BlockedIpService>();
         services.AddSingleton<IUserConnectionService, UserConnectionService>();
         services.AddSingleton<IRateLimitService, RateLimitService>();
+        services.AddSingleton<IMessagePersistenceQueue, MessagePersistenceQueue>();
         services.AddHostedService<MessageCleanupService>();
+        services.AddHostedService<MessagePersistenceService>();
         services.AddHostedService<PresenceCleanupService>();
 
         services.AddScoped<IRequestDispatcher, RequestDispatcher>();

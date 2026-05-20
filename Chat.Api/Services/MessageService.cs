@@ -1,6 +1,5 @@
 using Chat.Api.Data;
 using Chat.Api.DTOs;
-using Chat.Api.Entities;
 using Chat.Api.Helpers;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +7,7 @@ namespace Chat.Api.Services;
 
 public class MessageService(AppDbContext dbContext, IUserConnectionService userConnectionService) : IMessageService
 {
-    public async Task<ChatMessageDto> SavePublicMessageAsync(string senderUsername, string message, CancellationToken cancellationToken)
+    public ChatMessageEnvelope PreparePublicMessage(string senderUsername, string message)
     {
         var sanitized = MessageSanitizer.Sanitize(message);
         if (string.IsNullOrWhiteSpace(sanitized))
@@ -16,27 +15,27 @@ public class MessageService(AppDbContext dbContext, IUserConnectionService userC
             throw new InvalidOperationException("Message content is empty after sanitization.");
         }
 
-        var entity = new Message
+        var createdAt = DateTime.UtcNow;
+        var persistenceItem = new MessagePersistenceItem
         {
             SenderUsername = senderUsername,
             Content = sanitized,
             IsPrivate = false,
             RoomKey = "global",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = createdAt
         };
 
-        dbContext.Messages.Add(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return new ChatMessageDto
-        {
-            Sender = senderUsername,
-            Message = entity.Content,
-            SentAt = entity.CreatedAt
-        };
+        return new ChatMessageEnvelope(
+            new ChatMessageDto
+            {
+                Sender = senderUsername,
+                Message = sanitized,
+                SentAt = createdAt
+            },
+            persistenceItem);
     }
 
-    public async Task<PrivateMessageDto> SavePrivateMessageAsync(string senderUsername, string receiverUsername, string message, CancellationToken cancellationToken)
+    public PrivateMessageEnvelope PreparePrivateMessage(string senderUsername, string receiverUsername, string message)
     {
         var sanitized = MessageSanitizer.Sanitize(message);
         if (string.IsNullOrWhiteSpace(sanitized))
@@ -45,27 +44,27 @@ public class MessageService(AppDbContext dbContext, IUserConnectionService userC
         }
 
         var roomKey = userConnectionService.GetPrivateRoomKey(senderUsername, receiverUsername);
-        var entity = new Message
+        var createdAt = DateTime.UtcNow;
+        var persistenceItem = new MessagePersistenceItem
         {
             SenderUsername = senderUsername,
             ReceiverUsername = receiverUsername,
             Content = sanitized,
             IsPrivate = true,
             RoomKey = roomKey,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = createdAt
         };
 
-        dbContext.Messages.Add(entity);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return new PrivateMessageDto
-        {
-            Sender = senderUsername,
-            Receiver = receiverUsername,
-            Message = entity.Content,
-            SentAt = entity.CreatedAt,
-            RoomKey = roomKey
-        };
+        return new PrivateMessageEnvelope(
+            new PrivateMessageDto
+            {
+                Sender = senderUsername,
+                Receiver = receiverUsername,
+                Message = sanitized,
+                SentAt = createdAt,
+                RoomKey = roomKey
+            },
+            persistenceItem);
     }
 
     public async Task<IReadOnlyCollection<ChatMessageDto>> GetPublicMessagesAsync(int take, CancellationToken cancellationToken)

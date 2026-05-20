@@ -10,6 +10,7 @@ namespace Chat.Api.Hubs;
 public class ChatHub(
     IUserConnectionService userConnectionService,
     IMessageService messageService,
+    IMessagePersistenceQueue messagePersistenceQueue,
     IRateLimitService rateLimitService,
     IBlockedIpService blockedIpService) : Hub
 {
@@ -73,9 +74,10 @@ public class ChatHub(
             await Clients.Caller.SendAsync("RateLimitWarning", decision.Message, Context.ConnectionAborted);
         }
 
-        var savedMessage = await messageService.SavePublicMessageAsync(username, message, Context.ConnectionAborted);
+        var preparedMessage = messageService.PreparePublicMessage(username, message);
         await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
-        await Clients.Group(userConnectionService.GlobalRoomName).SendAsync("ReceiveMessage", savedMessage, Context.ConnectionAborted);
+        await Clients.Group(userConnectionService.GlobalRoomName).SendAsync("ReceiveMessage", preparedMessage.Message, Context.ConnectionAborted);
+        await messagePersistenceQueue.QueueAsync(preparedMessage.PersistenceItem, Context.ConnectionAborted);
     }
 
     public async Task JoinPrivateRoom(string otherUsername)
@@ -124,12 +126,13 @@ public class ChatHub(
             await Clients.Caller.SendAsync("RateLimitWarning", decision.Message, Context.ConnectionAborted);
         }
 
-        var savedMessage = await messageService.SavePrivateMessageAsync(username, receiverUsername, message, Context.ConnectionAborted);
+        var preparedMessage = messageService.PreparePrivateMessage(username, receiverUsername, message);
         await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
 
-        await Groups.AddToGroupAsync(receiverConnectionId, savedMessage.RoomKey, Context.ConnectionAborted);
-        await Groups.AddToGroupAsync(Context.ConnectionId, savedMessage.RoomKey, Context.ConnectionAborted);
-        await Clients.Group(savedMessage.RoomKey).SendAsync("ReceivePrivateMessage", savedMessage, Context.ConnectionAborted);
+        await Groups.AddToGroupAsync(receiverConnectionId, preparedMessage.Message.RoomKey, Context.ConnectionAborted);
+        await Groups.AddToGroupAsync(Context.ConnectionId, preparedMessage.Message.RoomKey, Context.ConnectionAborted);
+        await Clients.Group(preparedMessage.Message.RoomKey).SendAsync("ReceivePrivateMessage", preparedMessage.Message, Context.ConnectionAborted);
+        await messagePersistenceQueue.QueueAsync(preparedMessage.PersistenceItem, Context.ConnectionAborted);
     }
 
     public async Task Typing(string? targetUsername = null)
