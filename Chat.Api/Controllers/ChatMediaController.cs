@@ -16,10 +16,21 @@ public class ChatMediaController(IChatMediaService chatMediaService) : Controlle
     [RequestFormLimits(MultipartBodyLengthLimit = 55 * 1024 * 1024)]
     public async Task<ActionResult<ChatMediaUploadResponse>> Upload([FromForm] ChatMediaUploadRequest request, CancellationToken cancellationToken)
     {
-        var attachment = await chatMediaService.SaveAsync(request.File, request.Kind, cancellationToken);
-        return Ok(new ChatMediaUploadResponse
+        try
         {
-            Attachment = attachment
-        });
+            var attachment = await chatMediaService.SaveAsync(request.File, request.Kind, cancellationToken);
+            return Ok(new ChatMediaUploadResponse
+            {
+                Attachment = attachment
+            });
+        }
+        catch (CloudinaryMediaException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 }

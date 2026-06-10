@@ -31,7 +31,6 @@ public class ChatMediaService(
         var signature = SignParameters(new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["folder"] = folder,
-            ["resource_type"] = resourceType,
             ["timestamp"] = timestamp.ToString(CultureInfo.InvariantCulture),
             ["use_filename"] = "false",
             ["unique_filename"] = "true"
@@ -47,13 +46,15 @@ public class ChatMediaService(
         formData.Add(new StringContent(folder), "folder");
         formData.Add(new StringContent(signature), "signature");
         formData.Add(new StringContent(timestamp.ToString(CultureInfo.InvariantCulture)), "timestamp");
-        formData.Add(new StringContent(resourceType), "resource_type");
         formData.Add(new StringContent("false"), "use_filename");
         formData.Add(new StringContent("true"), "unique_filename");
 
         var response = await httpClient.PostAsync(BuildUploadUrl(resourceType), formData, cancellationToken);
         var payload = await response.Content.ReadAsStringAsync(cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new CloudinaryMediaException(ReadCloudinaryError(payload), response.StatusCode);
+        }
 
         var uploadResponse = JsonSerializer.Deserialize<CloudinaryUploadResponse>(payload, JsonOptions)
             ?? throw new InvalidOperationException("Cloudinary upload response was empty.");
@@ -134,7 +135,11 @@ public class ChatMediaService(
         });
 
         var response = await httpClient.PostAsync(BuildDestroyUrl(resourceType), formData, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new CloudinaryMediaException(ReadCloudinaryError(payload), response.StatusCode);
+        }
     }
 
     private void ValidateFile(string kind, IFormFile file)
@@ -235,6 +240,31 @@ public class ChatMediaService(
         var toHash = $"{joined}{_options.ApiSecret}";
         var bytes = SHA1.HashData(Encoding.UTF8.GetBytes(toHash));
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string ReadCloudinaryError(string payload)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return "Cloudinary rejected the media request.";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            if (document.RootElement.TryGetProperty("error", out var error) &&
+                error.TryGetProperty("message", out var message) &&
+                !string.IsNullOrWhiteSpace(message.GetString()))
+            {
+                return message.GetString()!;
+            }
+        }
+        catch (JsonException)
+        {
+            return "Cloudinary rejected the media request.";
+        }
+
+        return "Cloudinary rejected the media request.";
     }
 
     private sealed record CloudinaryAsset(string PublicId, string ResourceType);
