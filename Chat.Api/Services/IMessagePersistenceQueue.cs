@@ -20,5 +20,8 @@ public sealed record MessagePersistenceItem
     public string? AttachmentFileName { get; init; }
     public string? AttachmentContentType { get; init; }
     public long? AttachmentSizeBytes { get; init; }
+    public string? AttachmentStorageProvider { get; init; }
+    public string? AttachmentPublicId { get; init; }
+    public string? AttachmentResourceType { get; init; }
     public DateTime CreatedAt { get; init; }
 }

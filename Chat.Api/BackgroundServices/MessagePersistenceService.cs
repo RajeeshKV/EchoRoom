@@ -32,6 +32,9 @@ public class MessagePersistenceService(
                     AttachmentFileName = item.AttachmentFileName,
                     AttachmentContentType = item.AttachmentContentType,
                     AttachmentSizeBytes = item.AttachmentSizeBytes,
+                    AttachmentStorageProvider = item.AttachmentStorageProvider,
+                    AttachmentPublicId = item.AttachmentPublicId,
+                    AttachmentResourceType = item.AttachmentResourceType,
                     CreatedAt = item.CreatedAt
                 });
 

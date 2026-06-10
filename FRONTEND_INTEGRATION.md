@@ -80,7 +80,7 @@ Example response:
 {
   "attachment": {
     "kind": "image",
-    "url": "/uploads/chat/image/3de8b62d4f83443a8bb6f0bb4f5eb6f1.png",
+    "url": "https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/echoroom/chat/image/sample.png",
     "fileName": "photo.png",
     "contentType": "image/png",
     "sizeBytes": 241922
@@ -177,7 +177,7 @@ await connection.invoke("SendRichMessage", {
   replyToMessageId: "11111111-1111-1111-1111-111111111111",
   attachment: {
     kind: "image",
-    url: "/uploads/chat/image/3de8b62d4f83443a8bb6f0bb4f5eb6f1.png",
+    url: "https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/echoroom/chat/image/sample.png",
     fileName: "photo.png",
     contentType: "image/png",
     sizeBytes: 241922
@@ -205,7 +205,7 @@ await connection.invoke("SendPrivateRichMessage", "Bob123", {
   replyToMessageId: "11111111-1111-1111-1111-111111111111",
   attachment: {
     kind: "voice",
-    url: "/uploads/chat/voice/5ed1a93db60b4a3b9f4c8517c7065d7f.webm",
+    url: "https://res.cloudinary.com/your-cloud-name/video/upload/v1234567890/echoroom/chat/voice/voice-note.webm",
     fileName: "voice-note.webm",
     contentType: "audio/webm",
     sizeBytes: 842219
@@ -275,7 +275,7 @@ await connection.invoke("Heartbeat");
 ```json
 {
   "kind": "video",
-  "url": "/uploads/chat/video/b1d98fe8e5f44f6ab7b3e1ef0be5aa79.mp4",
+  "url": "https://res.cloudinary.com/your-cloud-name/video/upload/v1234567890/echoroom/chat/video/clip.mp4",
   "fileName": "clip.mp4",
   "contentType": "video/mp4",
   "sizeBytes": 10485760
@@ -309,7 +309,8 @@ await connection.invoke("Heartbeat");
 - Each message can contain text, a single attachment, or both.
 - Supported attachment kinds are `image`, `voice`, and `video`.
 - Video uploads are restricted to `50MB` maximum.
-- Uploaded files are returned as relative URLs, and those URLs should be sent back inside `SendRichMessage` or `SendPrivateRichMessage`.
+- Upload responses return a backend-issued attachment object with a hosted URL.
+- The UI should send the returned attachment object back inside `SendRichMessage` or `SendPrivateRichMessage` without adding provider-specific fields.
 - Replies use `replyToMessageId` and the server returns a compact reply preview in message history and realtime events.
 - The backend sends the latest public history on hub connect, and private history when the client joins a private room.
 - Use automatic reconnect on the SignalR client because cold starts on Render can delay websocket availability.

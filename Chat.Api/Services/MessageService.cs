@@ -67,6 +67,9 @@ public class MessageService(
             AttachmentFileName = attachment?.FileName,
             AttachmentContentType = attachment?.ContentType,
             AttachmentSizeBytes = attachment?.SizeBytes,
+            AttachmentStorageProvider = attachment?.Provider,
+            AttachmentPublicId = attachment?.PublicId,
+            AttachmentResourceType = attachment?.ResourceType,
             CreatedAt = createdAt
         };
 
@@ -140,6 +143,9 @@ public class MessageService(
             AttachmentFileName = attachment?.FileName,
             AttachmentContentType = attachment?.ContentType,
             AttachmentSizeBytes = attachment?.SizeBytes,
+            AttachmentStorageProvider = attachment?.Provider,
+            AttachmentPublicId = attachment?.PublicId,
+            AttachmentResourceType = attachment?.ResourceType,
             CreatedAt = createdAt
         };
 
@@ -270,7 +276,10 @@ public class MessageService(
             Url = message.AttachmentUrl,
             FileName = message.AttachmentFileName ?? string.Empty,
             ContentType = message.AttachmentContentType ?? string.Empty,
-            SizeBytes = message.AttachmentSizeBytes ?? 0
+            SizeBytes = message.AttachmentSizeBytes ?? 0,
+            Provider = message.AttachmentStorageProvider ?? string.Empty,
+            PublicId = message.AttachmentPublicId ?? string.Empty,
+            ResourceType = message.AttachmentResourceType ?? string.Empty
         };
     }
 

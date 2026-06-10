@@ -33,6 +33,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(x => x.AttachmentUrl).HasMaxLength(500);
             entity.Property(x => x.AttachmentFileName).HasMaxLength(255);
             entity.Property(x => x.AttachmentContentType).HasMaxLength(100);
+            entity.Property(x => x.AttachmentStorageProvider).HasMaxLength(50);
+            entity.Property(x => x.AttachmentPublicId).HasMaxLength(255);
+            entity.Property(x => x.AttachmentResourceType).HasMaxLength(50);
             entity.HasIndex(x => new { x.RoomKey, x.CreatedAt });
             entity.HasIndex(x => x.ReplyToMessageId);
         });

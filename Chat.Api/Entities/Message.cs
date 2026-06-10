@@ -14,5 +14,8 @@ public class Message
     public string? AttachmentFileName { get; set; }
     public string? AttachmentContentType { get; set; }
     public long? AttachmentSizeBytes { get; set; }
+    public string? AttachmentStorageProvider { get; set; }
+    public string? AttachmentPublicId { get; set; }
+    public string? AttachmentResourceType { get; set; }
     public DateTime CreatedAt { get; set; }
 }

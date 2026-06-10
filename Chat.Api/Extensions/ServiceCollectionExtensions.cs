@@ -1,5 +1,6 @@
 using System.Text;
 using Chat.Api.BackgroundServices;
+using Chat.Api.Configuration;
 using Chat.Api.Cqrs;
 using Chat.Api.Data;
 using Chat.Api.Services;
@@ -22,6 +23,7 @@ public static class ServiceCollectionExtensions
         {
             options.MultipartBodyLengthLimit = 55 * 1024 * 1024;
         });
+        services.Configure<CloudinaryOptions>(configuration.GetSection("Cloudinary"));
         services.AddCorsPolicy(configuration);
         services.AddDatabase(configuration);
         services.AddJwtAuthentication(configuration);
@@ -29,7 +31,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IBlockedIpService, BlockedIpService>();
-        services.AddSingleton<IChatMediaService, ChatMediaService>();
+        services.AddHttpClient<ChatMediaService>();
+        services.AddSingleton<IChatMediaService>(serviceProvider => serviceProvider.GetRequiredService<ChatMediaService>());
+        services.AddSingleton<ICloudinaryMediaService>(serviceProvider => serviceProvider.GetRequiredService<ChatMediaService>());
         services.AddSingleton<IRecentMessageCache, RecentMessageCache>();
         services.AddSingleton<IUserConnectionService, UserConnectionService>();
         services.AddSingleton<IRateLimitService, RateLimitService>();
