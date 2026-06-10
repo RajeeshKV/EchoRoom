@@ -24,6 +24,10 @@ public static class ServiceCollectionExtensions
             options.MultipartBodyLengthLimit = 55 * 1024 * 1024;
         });
         services.Configure<CloudinaryOptions>(configuration.GetSection("Cloudinary"));
+        services.PostConfigure<CloudinaryOptions>(options =>
+        {
+            ApplyCloudinaryEnvironmentFallbacks(configuration, options);
+        });
         services.AddCorsPolicy(configuration);
         services.AddDatabase(configuration);
         services.AddJwtAuthentication(configuration);
@@ -31,7 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IBlockedIpService, BlockedIpService>();
-        services.AddHttpClient<ChatMediaService>();
+        services.AddSingleton<ChatMediaService>();
         services.AddSingleton<IChatMediaService>(serviceProvider => serviceProvider.GetRequiredService<ChatMediaService>());
         services.AddSingleton<ICloudinaryMediaService>(serviceProvider => serviceProvider.GetRequiredService<ChatMediaService>());
         services.AddSingleton<IRecentMessageCache, RecentMessageCache>();
@@ -130,4 +134,48 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    private static void ApplyCloudinaryEnvironmentFallbacks(IConfiguration configuration, CloudinaryOptions options)
+    {
+        options.CloudName = FirstConfigured(
+            configuration["CLOUDINARY_CLOUD_NAME"],
+            configuration["CLOUDINARY_CLOUDNAME"],
+            configuration["Cloudinary:CloudName"],
+            options.CloudName);
+
+        options.ApiKey = FirstConfigured(
+            configuration["CLOUDINARY_API_KEY"],
+            configuration["Cloudinary:ApiKey"],
+            options.ApiKey);
+
+        options.ApiSecret = FirstConfigured(
+            configuration["CLOUDINARY_API_SECRET"],
+            configuration["Cloudinary:ApiSecret"],
+            options.ApiSecret);
+
+        var cloudinaryUrl = configuration["CLOUDINARY_URL"];
+        if (!string.IsNullOrWhiteSpace(cloudinaryUrl) &&
+            Uri.TryCreate(cloudinaryUrl, UriKind.Absolute, out var uri) &&
+            string.Equals(uri.Scheme, "cloudinary", StringComparison.OrdinalIgnoreCase))
+        {
+            options.CloudName = FirstConfigured(uri.Host, options.CloudName);
+
+            var credentials = uri.UserInfo.Split(':', 2);
+            if (credentials.Length == 2)
+            {
+                options.ApiKey = FirstConfigured(Uri.UnescapeDataString(credentials[0]), options.ApiKey);
+                options.ApiSecret = FirstConfigured(Uri.UnescapeDataString(credentials[1]), options.ApiSecret);
+            }
+        }
+
+        options.CloudName = options.CloudName.Trim();
+        options.ApiKey = options.ApiKey.Trim();
+        options.ApiSecret = options.ApiSecret.Trim();
+        options.UploadFolder = string.IsNullOrWhiteSpace(options.UploadFolder)
+            ? "echoroom/chat"
+            : options.UploadFolder.Trim();
+    }
+
+    private static string FirstConfigured(params string?[] values)
+        => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
 }
