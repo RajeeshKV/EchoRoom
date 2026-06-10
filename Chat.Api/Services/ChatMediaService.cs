@@ -14,11 +14,13 @@ namespace Chat.Api.Services;
 
 public class ChatMediaService(
     HttpClient httpClient,
-    IOptions<CloudinaryOptions> options) : IChatMediaService, ICloudinaryMediaService
+    IOptions<CloudinaryOptions> options,
+    ILogger<ChatMediaService> logger) : IChatMediaService, ICloudinaryMediaService
 {
     private const string CloudinaryProvider = "cloudinary";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly CloudinaryOptions _options = options.Value;
+    private bool _hasLoggedConfiguration;
 
     public async Task<ChatAttachmentDto> SaveAsync(IFormFile file, string kind, CancellationToken cancellationToken)
     {
@@ -28,13 +30,25 @@ public class ChatMediaService(
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var resourceType = ResolveUploadResourceType(kind);
         var folder = $"{_options.UploadFolder.Trim('/')}/{kind}";
+        var uploadAttemptId = Guid.NewGuid().ToString("N");
         var signature = SignParameters(new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["folder"] = folder,
-            ["timestamp"] = timestamp.ToString(CultureInfo.InvariantCulture),
-            ["use_filename"] = "false",
-            ["unique_filename"] = "true"
+            ["timestamp"] = timestamp.ToString(CultureInfo.InvariantCulture)
         });
+
+        logger.LogInformation(
+            "Cloudinary upload starting. AttemptId={AttemptId}, Kind={Kind}, ResourceType={ResourceType}, Folder={Folder}, FileName={FileName}, ContentType={ContentType}, SizeBytes={SizeBytes}, CloudName={CloudName}, HasApiKey={HasApiKey}, HasApiSecret={HasApiSecret}.",
+            uploadAttemptId,
+            kind,
+            resourceType,
+            folder,
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            MaskValue(_options.CloudName),
+            !string.IsNullOrWhiteSpace(_options.ApiKey),
+            !string.IsNullOrWhiteSpace(_options.ApiSecret));
 
         using var formData = new MultipartFormDataContent();
         await using var fileStream = file.OpenReadStream();
@@ -46,18 +60,30 @@ public class ChatMediaService(
         formData.Add(new StringContent(folder), "folder");
         formData.Add(new StringContent(signature), "signature");
         formData.Add(new StringContent(timestamp.ToString(CultureInfo.InvariantCulture)), "timestamp");
-        formData.Add(new StringContent("false"), "use_filename");
-        formData.Add(new StringContent("true"), "unique_filename");
 
         var response = await httpClient.PostAsync(BuildUploadUrl(resourceType), formData, cancellationToken);
         var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new CloudinaryMediaException(ReadCloudinaryError(payload), response.StatusCode);
+            var cloudinaryError = ReadCloudinaryError(payload);
+            logger.LogWarning(
+                "Cloudinary upload failed. AttemptId={AttemptId}, StatusCode={StatusCode}, Error={Error}, ResponseBody={ResponseBody}.",
+                uploadAttemptId,
+                (int)response.StatusCode,
+                cloudinaryError,
+                TruncateForLog(payload));
+            throw new CloudinaryMediaException(cloudinaryError, response.StatusCode);
         }
 
         var uploadResponse = JsonSerializer.Deserialize<CloudinaryUploadResponse>(payload, JsonOptions)
             ?? throw new InvalidOperationException("Cloudinary upload response was empty.");
+
+        logger.LogInformation(
+            "Cloudinary upload succeeded. AttemptId={AttemptId}, PublicId={PublicId}, ResourceType={ResourceType}, Bytes={Bytes}.",
+            uploadAttemptId,
+            uploadResponse.PublicId,
+            uploadResponse.ResourceType,
+            uploadResponse.Bytes);
 
         return new ChatAttachmentDto
         {
@@ -118,12 +144,20 @@ public class ChatMediaService(
         ValidateConfigured();
 
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var deleteAttemptId = Guid.NewGuid().ToString("N");
         var signature = SignParameters(new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["invalidate"] = "true",
             ["public_id"] = publicId,
             ["timestamp"] = timestamp.ToString(CultureInfo.InvariantCulture)
         });
+
+        logger.LogInformation(
+            "Cloudinary delete starting. AttemptId={AttemptId}, PublicId={PublicId}, ResourceType={ResourceType}, CloudName={CloudName}.",
+            deleteAttemptId,
+            publicId,
+            resourceType,
+            MaskValue(_options.CloudName));
 
         using var formData = new FormUrlEncodedContent(new Dictionary<string, string>
         {
@@ -138,8 +172,23 @@ public class ChatMediaService(
         var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw new CloudinaryMediaException(ReadCloudinaryError(payload), response.StatusCode);
+            var cloudinaryError = ReadCloudinaryError(payload);
+            logger.LogWarning(
+                "Cloudinary delete failed. AttemptId={AttemptId}, PublicId={PublicId}, ResourceType={ResourceType}, StatusCode={StatusCode}, Error={Error}, ResponseBody={ResponseBody}.",
+                deleteAttemptId,
+                publicId,
+                resourceType,
+                (int)response.StatusCode,
+                cloudinaryError,
+                TruncateForLog(payload));
+            throw new CloudinaryMediaException(cloudinaryError, response.StatusCode);
         }
+
+        logger.LogInformation(
+            "Cloudinary delete succeeded. AttemptId={AttemptId}, PublicId={PublicId}, ResourceType={ResourceType}.",
+            deleteAttemptId,
+            publicId,
+            resourceType);
     }
 
     private void ValidateFile(string kind, IFormFile file)
@@ -170,6 +219,17 @@ public class ChatMediaService(
 
     private void ValidateConfigured()
     {
+        if (!_hasLoggedConfiguration)
+        {
+            logger.LogInformation(
+                "Cloudinary configuration present: CloudName={HasCloudName}, ApiKey={HasApiKey}, ApiSecret={HasApiSecret}, UploadFolder={UploadFolder}.",
+                !string.IsNullOrWhiteSpace(_options.CloudName),
+                !string.IsNullOrWhiteSpace(_options.ApiKey),
+                !string.IsNullOrWhiteSpace(_options.ApiSecret),
+                _options.UploadFolder);
+            _hasLoggedConfiguration = true;
+        }
+
         if (string.IsNullOrWhiteSpace(_options.CloudName) ||
             string.IsNullOrWhiteSpace(_options.ApiKey) ||
             string.IsNullOrWhiteSpace(_options.ApiSecret))
@@ -267,6 +327,28 @@ public class ChatMediaService(
         return "Cloudinary rejected the media request.";
     }
 
+    private static string MaskValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "<empty>";
+        }
+
+        return value.Length <= 4
+            ? "****"
+            : $"{value[..2]}***{value[^2..]}";
+    }
+
+    private static string TruncateForLog(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "<empty>";
+        }
+
+        return value.Length <= 500 ? value : $"{value[..500]}...";
+    }
+
     private sealed record CloudinaryAsset(string PublicId, string ResourceType);
 
     private sealed class CloudinaryUploadResponse
@@ -279,5 +361,8 @@ public class ChatMediaService(
 
         [JsonPropertyName("secure_url")]
         public string SecureUrl { get; set; } = string.Empty;
+
+        [JsonPropertyName("bytes")]
+        public long Bytes { get; set; }
     }
 }
