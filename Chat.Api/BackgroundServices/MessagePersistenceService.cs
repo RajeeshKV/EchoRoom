@@ -20,11 +20,18 @@ public class MessagePersistenceService(
 
                 dbContext.Messages.Add(new Message
                 {
+                    Id = item.Id,
                     SenderUsername = item.SenderUsername,
                     ReceiverUsername = item.ReceiverUsername,
                     Content = item.Content,
                     IsPrivate = item.IsPrivate,
                     RoomKey = item.RoomKey,
+                    ReplyToMessageId = item.ReplyToMessageId,
+                    AttachmentKind = item.AttachmentKind,
+                    AttachmentUrl = item.AttachmentUrl,
+                    AttachmentFileName = item.AttachmentFileName,
+                    AttachmentContentType = item.AttachmentContentType,
+                    AttachmentSizeBytes = item.AttachmentSizeBytes,
                     CreatedAt = item.CreatedAt
                 });
 

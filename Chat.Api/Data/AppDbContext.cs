@@ -29,7 +29,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(x => x.ReceiverUsername).HasMaxLength(50);
             entity.Property(x => x.RoomKey).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Content).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.AttachmentKind).HasMaxLength(20);
+            entity.Property(x => x.AttachmentUrl).HasMaxLength(500);
+            entity.Property(x => x.AttachmentFileName).HasMaxLength(255);
+            entity.Property(x => x.AttachmentContentType).HasMaxLength(100);
             entity.HasIndex(x => new { x.RoomKey, x.CreatedAt });
+            entity.HasIndex(x => x.ReplyToMessageId);
         });
 
         modelBuilder.Entity<UserConnection>(entity =>

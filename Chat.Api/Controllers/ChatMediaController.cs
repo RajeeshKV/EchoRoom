@@ -1,0 +1,24 @@
+using Chat.Api.DTOs;
+using Chat.Api.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Chat.Api.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/chat/media")]
+public class ChatMediaController(IChatMediaService chatMediaService) : ControllerBase
+{
+    [HttpPost("upload")]
+    [RequestSizeLimit(55 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 55 * 1024 * 1024)]
+    public async Task<ActionResult<ChatMediaUploadResponse>> Upload([FromForm] IFormFile file, [FromForm] string kind, CancellationToken cancellationToken)
+    {
+        var attachment = await chatMediaService.SaveAsync(file, kind, cancellationToken);
+        return Ok(new ChatMediaUploadResponse
+        {
+            Attachment = attachment
+        });
+    }
+}

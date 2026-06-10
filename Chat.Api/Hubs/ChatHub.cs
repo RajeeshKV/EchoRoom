@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Chat.Api.DTOs;
 using Chat.Api.Helpers;
 using Chat.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -56,6 +57,9 @@ public class ChatHub(
     }
 
     public async Task SendMessage(string message)
+        => await SendRichMessage(new SendChatMessageRequest { Message = message });
+
+    public async Task SendRichMessage(SendChatMessageRequest request)
     {
         var username = GetUsername();
         if (string.IsNullOrWhiteSpace(username))
@@ -74,7 +78,7 @@ public class ChatHub(
             await Clients.Caller.SendAsync("RateLimitWarning", decision.Message, Context.ConnectionAborted);
         }
 
-        var preparedMessage = messageService.PreparePublicMessage(username, message);
+        var preparedMessage = await messageService.PreparePublicMessageAsync(username, request, Context.ConnectionAborted);
         await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
         await Clients.Group(userConnectionService.GlobalRoomName).SendAsync("ReceiveMessage", preparedMessage.Message, Context.ConnectionAborted);
         await messagePersistenceQueue.QueueAsync(preparedMessage.PersistenceItem, Context.ConnectionAborted);
@@ -97,6 +101,9 @@ public class ChatHub(
     }
 
     public async Task SendPrivateMessage(string receiverUsername, string message)
+        => await SendPrivateRichMessage(receiverUsername, new SendChatMessageRequest { Message = message });
+
+    public async Task SendPrivateRichMessage(string receiverUsername, SendChatMessageRequest request)
     {
         var username = GetUsername();
         if (string.IsNullOrWhiteSpace(username))
@@ -126,7 +133,7 @@ public class ChatHub(
             await Clients.Caller.SendAsync("RateLimitWarning", decision.Message, Context.ConnectionAborted);
         }
 
-        var preparedMessage = messageService.PreparePrivateMessage(username, receiverUsername, message);
+        var preparedMessage = await messageService.PreparePrivateMessageAsync(username, receiverUsername, request, Context.ConnectionAborted);
         await userConnectionService.TouchUserAsync(username, Context.ConnectionAborted);
 
         await Groups.AddToGroupAsync(receiverConnectionId, preparedMessage.Message.RoomKey, Context.ConnectionAborted);

@@ -4,8 +4,8 @@ namespace Chat.Api.Services;
 
 public interface IMessageService
 {
-    ChatMessageEnvelope PreparePublicMessage(string senderUsername, string message);
-    PrivateMessageEnvelope PreparePrivateMessage(string senderUsername, string receiverUsername, string message);
+    Task<ChatMessageEnvelope> PreparePublicMessageAsync(string senderUsername, SendChatMessageRequest request, CancellationToken cancellationToken);
+    Task<PrivateMessageEnvelope> PreparePrivateMessageAsync(string senderUsername, string receiverUsername, SendChatMessageRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<ChatMessageDto>> GetPublicMessagesAsync(int take, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<PrivateMessageDto>> GetPrivateMessagesAsync(string firstUsername, string secondUsername, int take, CancellationToken cancellationToken);
 }

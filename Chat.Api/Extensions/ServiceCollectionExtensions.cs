@@ -4,6 +4,7 @@ using Chat.Api.Cqrs;
 using Chat.Api.Data;
 using Chat.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,6 +18,10 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
         services.AddSignalR();
+        services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 55 * 1024 * 1024;
+        });
         services.AddCorsPolicy(configuration);
         services.AddDatabase(configuration);
         services.AddJwtAuthentication(configuration);
@@ -24,6 +29,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IBlockedIpService, BlockedIpService>();
+        services.AddSingleton<IChatMediaService, ChatMediaService>();
+        services.AddSingleton<IRecentMessageCache, RecentMessageCache>();
         services.AddSingleton<IUserConnectionService, UserConnectionService>();
         services.AddSingleton<IRateLimitService, RateLimitService>();
         services.AddSingleton<IMessagePersistenceQueue, MessagePersistenceQueue>();

@@ -12,6 +12,7 @@ public static class WebApplicationExtensions
         app.UseSwaggerUI();
 
         app.UseHttpsRedirection();
+        app.UseStaticFiles();
         app.UseCors("ChatClient");
         app.UseMiddleware<BlockedIpMiddleware>();
         app.UseAuthentication();

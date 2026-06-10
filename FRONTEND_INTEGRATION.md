@@ -52,6 +52,42 @@ Authorization: Bearer <jwt>
 
 `GET /api/chat/active-users`
 
+### Upload image, voice, or video
+
+`POST /api/chat/media/upload`
+
+Headers:
+
+```text
+Authorization: Bearer <jwt>
+Content-Type: multipart/form-data
+```
+
+Form fields:
+
+- `file`: binary file
+- `kind`: `image` | `voice` | `video`
+
+Limits:
+
+- `image`: `10MB`
+- `voice`: `15MB`
+- `video`: `50MB`
+
+Example response:
+
+```json
+{
+  "attachment": {
+    "kind": "image",
+    "url": "/uploads/chat/image/3de8b62d4f83443a8bb6f0bb4f5eb6f1.png",
+    "fileName": "photo.png",
+    "contentType": "image/png",
+    "sizeBytes": 241922
+  }
+}
+```
+
 ## SignalR Client Setup
 
 Install:
@@ -133,6 +169,22 @@ window.addEventListener("beforeunload", () => {
 await connection.invoke("SendMessage", "Hello everyone");
 ```
 
+### Public room rich message
+
+```ts
+await connection.invoke("SendRichMessage", {
+  message: "Check this out",
+  replyToMessageId: "11111111-1111-1111-1111-111111111111",
+  attachment: {
+    kind: "image",
+    url: "/uploads/chat/image/3de8b62d4f83443a8bb6f0bb4f5eb6f1.png",
+    fileName: "photo.png",
+    contentType: "image/png",
+    sizeBytes: 241922
+  }
+});
+```
+
 ### Join a private room
 
 ```ts
@@ -143,6 +195,22 @@ await connection.invoke("JoinPrivateRoom", "Bob123");
 
 ```ts
 await connection.invoke("SendPrivateMessage", "Bob123", "Hey Bob");
+```
+
+### Send a private rich message
+
+```ts
+await connection.invoke("SendPrivateRichMessage", "Bob123", {
+  message: "",
+  replyToMessageId: "11111111-1111-1111-1111-111111111111",
+  attachment: {
+    kind: "voice",
+    url: "/uploads/chat/voice/5ed1a93db60b4a3b9f4c8517c7065d7f.webm",
+    fileName: "voice-note.webm",
+    contentType: "audio/webm",
+    sizeBytes: 842219
+  }
+});
 ```
 
 ### Typing indicators
@@ -178,8 +246,11 @@ await connection.invoke("Heartbeat");
 
 ```json
 {
+  "id": "11111111-1111-1111-1111-111111111111",
   "sender": "Alice123",
   "message": "hello",
+  "attachment": null,
+  "replyTo": null,
   "sentAt": "2026-05-19T12:00:00Z"
 }
 ```
@@ -188,11 +259,37 @@ await connection.invoke("Heartbeat");
 
 ```json
 {
+  "id": "22222222-2222-2222-2222-222222222222",
   "sender": "Alice123",
   "receiver": "Bob123",
   "message": "hello",
+  "attachment": null,
+  "replyTo": null,
   "sentAt": "2026-05-19T12:00:00Z",
   "roomKey": "dm:Alice123:Bob123"
+}
+```
+
+### Attachment
+
+```json
+{
+  "kind": "video",
+  "url": "/uploads/chat/video/b1d98fe8e5f44f6ab7b3e1ef0be5aa79.mp4",
+  "fileName": "clip.mp4",
+  "contentType": "video/mp4",
+  "sizeBytes": 10485760
+}
+```
+
+### Reply preview
+
+```json
+{
+  "messageId": "33333333-3333-3333-3333-333333333333",
+  "sender": "Bob123",
+  "message": "hello there",
+  "attachmentKind": null
 }
 ```
 
@@ -209,6 +306,11 @@ await connection.invoke("Heartbeat");
 - Usernames must be `3-20` alphanumeric characters only.
 - Only one active session per username is allowed. A new login replaces the old SignalR session.
 - Public messages and private messages are sanitized and capped at `500` characters.
+- Each message can contain text, a single attachment, or both.
+- Supported attachment kinds are `image`, `voice`, and `video`.
+- Video uploads are restricted to `50MB` maximum.
+- Uploaded files are returned as relative URLs, and those URLs should be sent back inside `SendRichMessage` or `SendPrivateRichMessage`.
+- Replies use `replyToMessageId` and the server returns a compact reply preview in message history and realtime events.
 - The backend sends the latest public history on hub connect, and private history when the client joins a private room.
 - Use automatic reconnect on the SignalR client because cold starts on Render can delay websocket availability.
 - Send `Heartbeat` every `25` seconds while connected so inactive users are cleared correctly.

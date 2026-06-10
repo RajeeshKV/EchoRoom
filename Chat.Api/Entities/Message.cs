@@ -8,5 +8,11 @@ public class Message
     public string Content { get; set; } = string.Empty;
     public bool IsPrivate { get; set; }
     public string RoomKey { get; set; } = string.Empty;
+    public Guid? ReplyToMessageId { get; set; }
+    public string? AttachmentKind { get; set; }
+    public string? AttachmentUrl { get; set; }
+    public string? AttachmentFileName { get; set; }
+    public string? AttachmentContentType { get; set; }
+    public long? AttachmentSizeBytes { get; set; }
     public DateTime CreatedAt { get; set; }
 }
