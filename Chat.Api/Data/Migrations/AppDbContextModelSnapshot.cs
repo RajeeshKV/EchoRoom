@@ -66,8 +66,20 @@ namespace Chat.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("AttachmentPublicId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("AttachmentResourceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<long?>("AttachmentSizeBytes")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("AttachmentStorageProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("AttachmentUrl")
                         .HasMaxLength(500)
