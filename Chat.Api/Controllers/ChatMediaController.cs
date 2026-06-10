@@ -11,11 +11,12 @@ namespace Chat.Api.Controllers;
 public class ChatMediaController(IChatMediaService chatMediaService) : ControllerBase
 {
     [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(55 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 55 * 1024 * 1024)]
-    public async Task<ActionResult<ChatMediaUploadResponse>> Upload([FromForm] IFormFile file, [FromForm] string kind, CancellationToken cancellationToken)
+    public async Task<ActionResult<ChatMediaUploadResponse>> Upload([FromForm] ChatMediaUploadRequest request, CancellationToken cancellationToken)
     {
-        var attachment = await chatMediaService.SaveAsync(file, kind, cancellationToken);
+        var attachment = await chatMediaService.SaveAsync(request.File, request.Kind, cancellationToken);
         return Ok(new ChatMediaUploadResponse
         {
             Attachment = attachment
